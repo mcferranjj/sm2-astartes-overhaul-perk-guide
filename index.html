@@ -35,7 +35,7 @@ main{max-width:1500px;margin:0 auto;padding:0 16px 40px}
 .layout{display:block}
 
 .classhead{display:flex;gap:16px;align-items:center;margin:4px 0 14px}
-.classhead .em{width:84px;height:84px}
+.classhead .ab-hex{width:84px;height:92px;flex:none}.classhead .ab-hex .g{font-size:26px}
 .classhead h2{margin:0;font-size:clamp(26px,5vw,38px);letter-spacing:.3em;color:var(--gold);text-transform:uppercase}
 .classhead .ab{color:var(--dim);letter-spacing:.06em}.classhead .ab b{color:var(--gold2);letter-spacing:.14em;text-transform:uppercase}
 .hscroll{position:relative;overflow-x:auto;padding:10px 0 12px;-webkit-overflow-scrolling:touch}
@@ -247,12 +247,14 @@ function renderClass(){
   const colsHTML = (cols, where, color) => '<div class="cols">'+cols.map(col=>'<div class="col">'+mk(col, where+' perk', color)+'</div>').join('')+'</div>';
   const group = (title, inner) => '<section class="group"><h3>'+title+'</h3>'+inner+'</section>';
   const base = c.base.map(p => Object.assign({where:'Class ability'}, p));
-  const baseHTML = base.length ? group('Ability', '<div class="cols"><div class="col">'+base.map(p=>hex(p,'var(--gold2)','alt')).join('')+'</div></div>') : '';
+  const ab = base.find(p => !p.untext) || base[0] || null;
+  const abId = ab ? register(ab) : null;
+  const abHex = ab ? '<button class="hex ab-hex" data-id="'+abId+'" style="--c:var(--gold2)" aria-pressed="'+(state.sel===abId)+'" aria-label="'+esc(ab.n)+'">'+hexSVG+'<span class="g">'+esc(initials(ab.n))+'</span></button>' : '';
   const pres = c.prestige.map(pr => group('Prestige '+pr.level, '<div class="cols">'+pr.perks.map(p=>'<div class="col">'+hex(Object.assign({where:'Prestige '+pr.level+' perk'},p),'var(--pres)')+'</div>').join('')+'</div>')).join('');
   return '<div class="strip">'+strip+'</div>'+
    '<div class="layout"><div>'+
-   '<div class="classhead">'+emblem(c.name[0],'var(--gold)')+'<div><h2>'+esc(c.name)+'</h2><div class="ab">Ability: <b>'+esc(((c.base.find(p=>!p.untext)||{}).n)||(c.name==='Apothecary'?'Narthecium':''))+'</b></div></div></div>'+
-   '<div class="hscroll"><div class="groups">'+group('Core',colsHTML(c.core,'Core',GC.Core))+group('Team',colsHTML([c.team.map(p=>p)],'Team',GC.Team))+group('Gear',colsHTML(c.gear,'Gear',GC.Gear))+group('Signature',colsHTML(c.signature,'Signature',GC.Signature))+baseHTML+'</div>'+
+   '<div class="classhead">'+abHex+'<div><h2>'+esc(c.name)+'</h2><div class="ab">Ability: <b>'+esc(((c.base.find(p=>!p.untext)||{}).n)||(c.name==='Apothecary'?'Narthecium':''))+'</b></div></div></div>'+
+   '<div class="hscroll"><div class="groups">'+group('Core',colsHTML(c.core,'Core',GC.Core))+group('Team',colsHTML([c.team.map(p=>p)],'Team',GC.Team))+group('Gear',colsHTML(c.gear,'Gear',GC.Gear))+group('Signature',colsHTML(c.signature,'Signature',GC.Signature))+'</div>'+
    '<div class="prestige">'+pres+'</div></div>'+
    '</div></div>';
 }
