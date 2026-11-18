@@ -38,7 +38,9 @@ main{max-width:1500px;margin:0 auto;padding:0 16px 40px}
 .classhead .em{width:84px;height:84px}
 .classhead h2{margin:0;font-size:clamp(26px,5vw,38px);letter-spacing:.3em;color:var(--gold);text-transform:uppercase}
 .classhead .ab{color:var(--dim);letter-spacing:.06em}.classhead .ab b{color:var(--gold2);letter-spacing:.14em;text-transform:uppercase}
-.groups{display:flex;flex-wrap:wrap;gap:14px}
+.hscroll{position:relative;overflow-x:auto;padding:10px 0 12px;-webkit-overflow-scrolling:touch}
+.groups{display:flex;flex-wrap:nowrap;gap:14px;width:max-content}
+.group{flex:none}
 .group{border:1px dashed var(--line);background:rgba(18,23,27,.6);padding:0 12px 12px;position:relative;min-width:0}
 .group>h3{margin:0 0 8px;transform:translateY(-9px);display:inline-block;background:var(--bg);padding:0 8px;font-size:13px;letter-spacing:.3em;color:var(--dim);text-transform:uppercase}
 .cols{display:flex;gap:10px}
@@ -56,7 +58,7 @@ main{max-width:1500px;margin:0 auto;padding:0 16px 40px}
 .hex.block .poly{stroke:#ff6b5e;stroke-dasharray:3 3;fill:#2a1c1b}
 .nm{font-size:13px;line-height:1.1;color:var(--text);margin-top:2px;min-height:28px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .lv{font-size:11px;color:var(--dim);letter-spacing:.12em}
-.prestige{margin-top:16px;display:flex;gap:14px;flex-wrap:wrap}
+.prestige{margin-top:16px;display:flex;gap:14px;flex-wrap:nowrap;width:max-content}
 .detail{position:absolute;z-index:20;width:min(340px,calc(100vw - 16px));border:1px solid var(--gold);background:linear-gradient(180deg,#1a2126,#10151a);padding:14px 16px;box-shadow:0 10px 30px rgba(0,0,0,.7)}.detail[hidden]{display:none}.detail::after{content:"";position:absolute;left:var(--ax,50%);width:12px;height:12px;background:#10151a;border:1px solid var(--gold);transform:translateX(-50%) rotate(45deg)}.detail.up::after{bottom:-7px;border-width:0 1px 1px 0}.detail.down::after{top:-7px;border-width:1px 0 0 1px;background:#1a2126}
 .detail .kicker{letter-spacing:.2em;font-size:12px;color:var(--dim);text-transform:uppercase}
 .detail h4{margin:4px 0 8px;font-size:22px;color:var(--gold2);letter-spacing:.04em}
@@ -87,7 +89,7 @@ main{max-width:1500px;margin:0 auto;padding:0 16px 40px}
 .res b{color:var(--gold2)}.res small{display:block;color:var(--dim);letter-spacing:.1em;text-transform:uppercase;font-size:11px;margin-bottom:3px}
 footer{max-width:1500px;margin:0 auto;padding:0 16px 40px;color:var(--dim);font-size:13px;line-height:1.5}
 
-.treewrap{overflow-x:auto;padding-bottom:8px}
+.treewrap{position:relative;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch}
 .tree{position:relative;display:flex;min-width:1320px;border:1px solid var(--line);background:rgba(10,14,17,.7)}
 .tcol{position:relative;min-width:0;border-left:1px solid #1d2428;display:flex;flex-direction:column}
 .tcol:first-child{border-left:0}
@@ -188,7 +190,7 @@ function detailHTML(p){
 }
 
 function render(){
-  REG.length = 0; $('#pop').hidden = true;
+  REG.length = 0; document.body.appendChild($('#pop')); $('#pop').hidden = true;
   const q = state.q.trim().toLowerCase();
   let html = '';
   if(q) html = renderSearch(q);
@@ -219,14 +221,19 @@ function selectPerk(quiet){
   }
   pop.innerHTML = detailHTML(p); pop.hidden = false;
   const h = document.querySelector('.hex[data-id="'+state.sel+'"]'); if(!h) return;
-  const r = h.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight, vw = document.documentElement.clientWidth;
-  const gap = 14, left = r.left - pw - gap >= 8;                 // to the left of the perk if it fits, otherwise to the right
-  let x = left ? r.left - pw - gap : r.right + gap;
-  x = Math.max(8, Math.min(x, vw - pw - 8));
-  let y = r.top + r.height/2 - ph/2; y = Math.max(8, Math.min(y, innerHeight - ph - 8));   // centred on the perk, kept on screen
+  const cont = h.closest('.hscroll, .treewrap') || document.body;
+  if(pop.parentNode !== cont) cont.appendChild(pop);
+  pop.hidden = false;
+  const r = h.getBoundingClientRect(), cr = cont.getBoundingClientRect(), pw = pop.offsetWidth, ph = pop.offsetHeight;
+  const visL = Math.max(cr.left, 0) + 8, visR = Math.min(cr.right, document.documentElement.clientWidth) - 8;   // part of the container you can currently see
+  const gap = 14, left = r.left - pw - gap >= visL;                 // to the left of the perk if it fits, otherwise to the right
+  let xv = left ? r.left - pw - gap : r.right + gap;
+  xv = Math.max(visL, Math.min(xv, visR - pw));
+  const toX = v => v - cr.left + cont.scrollLeft - cont.clientLeft, toY = v => v - cr.top + cont.scrollTop - cont.clientTop;
+  const cy = Math.max(0, Math.min(toY(r.top + r.height/2 - ph/2), cont.scrollHeight - ph));
   pop.className = 'detail ' + (left ? 'lt' : 'rt');
-  pop.style.left = (x + scrollX) + 'px'; pop.style.top = (y + scrollY) + 'px';
-  pop.style.setProperty('--ay', Math.max(16, Math.min(ph - 16, r.top + r.height/2 - y)) + 'px');
+  pop.style.left = toX(xv) + 'px'; pop.style.top = cy + 'px';
+  pop.style.setProperty('--ay', Math.max(16, Math.min(ph - 16, toY(r.top + r.height/2) - cy)) + 'px');
   if(!quiet && (r.top < 0 || r.bottom > innerHeight)) h.scrollIntoView({block:'center', behavior:'smooth'});
 }
 document.addEventListener('click', e => { if(state.sel!=null && !e.target.closest('.hex[data-id]') && !e.target.closest('#pop')){ state.sel=null; selectPerk(); } });
@@ -245,8 +252,8 @@ function renderClass(){
   return '<div class="strip">'+strip+'</div>'+
    '<div class="layout"><div>'+
    '<div class="classhead">'+emblem(c.name[0],'var(--gold)')+'<div><h2>'+esc(c.name)+'</h2><div class="ab">Ability: <b>'+esc(((c.base.find(p=>!p.untext)||{}).n)||(c.name==='Apothecary'?'Narthecium':''))+'</b></div></div></div>'+
-   '<div class="groups">'+group('Core',colsHTML(c.core,'Core',GC.Core))+group('Team',colsHTML([c.team.map(p=>p)],'Team',GC.Team))+group('Gear',colsHTML(c.gear,'Gear',GC.Gear))+group('Signature',colsHTML(c.signature,'Signature',GC.Signature))+baseHTML+'</div>'+
-   '<div class="prestige">'+pres+'</div>'+
+   '<div class="hscroll"><div class="groups">'+group('Core',colsHTML(c.core,'Core',GC.Core))+group('Team',colsHTML([c.team.map(p=>p)],'Team',GC.Team))+group('Gear',colsHTML(c.gear,'Gear',GC.Gear))+group('Signature',colsHTML(c.signature,'Signature',GC.Signature))+baseHTML+'</div>'+
+   '<div class="prestige">'+pres+'</div></div>'+
    '</div></div>';
 }
 
